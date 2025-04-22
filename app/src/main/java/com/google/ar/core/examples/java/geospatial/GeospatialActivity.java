@@ -266,7 +266,7 @@ public class GeospatialActivity extends AppCompatActivity
   private void sendFrozenPoseToBackend(double lat, double lng, double alt, float[] quaternion) {
     new Thread(() -> {
       try {
-        URL url = new URL("https://your-backend.com/location");
+        URL url = new URL("https://f3d6-163-5-171-14.ngrok-free.app/get_description");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
