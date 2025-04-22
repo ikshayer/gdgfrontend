@@ -197,6 +197,8 @@ public class GeospatialActivity extends AppCompatActivity
   private TextView tapScreenTextView;
   private Button setAnchorButton;
   private Button clearAnchorsButton;
+
+  private Button sendButton;
   private Switch streetscapeGeometrySwitch;
 
   private PlaneRenderer planeRenderer;
@@ -268,6 +270,16 @@ public class GeospatialActivity extends AppCompatActivity
     tapScreenTextView = findViewById(R.id.tap_screen_text_view);
     setAnchorButton = findViewById(R.id.set_anchor_button);
     clearAnchorsButton = findViewById(R.id.clear_anchors_button);
+    sendButton = findViewById(R.id.freeze_send_button);
+
+    sendButton.setOnClickListener(
+      new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          System.out.println("Send button clicked");
+        }
+      }
+    );
 
     setAnchorButton.setOnClickListener(
         new View.OnClickListener() {
