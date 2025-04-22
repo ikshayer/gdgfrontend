@@ -85,6 +85,8 @@
       android:layout_alignParentBottom="true"
       android:visibility="invisible"/>
   <!--      Assigns a unique ID to this button so it can be accessed in Java (findViewById(R.id.freeze_send_button)).-->
+
+  <!--  This defines a button users can tap to "freeze" their current latitude/longitude and send it to a backend server.-->
   <Button
       android:id="@+id/freeze_send_button"
       android:layout_width="wrap_content"
@@ -93,5 +95,15 @@
       android:layout_centerHorizontal="true"
       android:layout_above="@+id/status_text_view"
       android:layout_marginBottom="16dp"/>
+  <TextView
+      android:id="@+id/freeze_status_text"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Waiting for input..."
+      android:textColor="#ffffff"
+      android:textSize="16sp"
+      android:layout_centerHorizontal="true"
+      android:layout_above="@id/freeze_send_button"
+      android:layout_marginBottom="8dp"/>
 
 </RelativeLayout>

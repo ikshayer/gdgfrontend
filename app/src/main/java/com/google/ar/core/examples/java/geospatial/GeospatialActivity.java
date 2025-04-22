@@ -87,7 +87,13 @@ import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import com.google.ar.core.exceptions.UnsupportedConfigurationException;
+
+import org.json.JSONObject;
+
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -256,18 +262,78 @@ public class GeospatialActivity extends AppCompatActivity
   // A set of planes representing building outlines and floors.
   private final Map<StreetscapeGeometry, Mesh> streetscapeGeometryToMeshes = new HashMap<>();
 
+
+  private void sendFrozenPoseToBackend(double lat, double lng, double alt, float[] quaternion) {
+    new Thread(() -> {
+      try {
+        URL url = new URL("https://your-backend.com/location");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/json");
+
+        JSONObject json = new JSONObject();
+        json.put("latitude", lat);
+        json.put("longitude", lng);
+        json.put("altitude", alt);
+        json.put("quaternion", quaternion);
+
+        OutputStream os = conn.getOutputStream();
+        os.write(json.toString().getBytes("UTF-8"));
+        os.close();
+
+        Log.d("Freeze", "Pose sent successfully");
+      } catch (Exception e) {
+        Log.e("Freeze", "Failed to send pose", e);
+      }
+    }).start();
+  }
+
+
+  // onCreate(): which is the entry point when this activity is launched in your ARCore app.
   @Override
   protected void onCreate(Bundle savedInstanceState) {
+
     super.onCreate(savedInstanceState);
     sharedPreferences = getPreferences(Context.MODE_PRIVATE);
-    //    Loads the layout file.
+    //Loads the layout file.
     setContentView(R.layout.activity_main);
+    //Loads the layout from res/layout/activity_main.xml and puts it on the screen.
+    //This connects buttons and text views from the XML to variables you can control in Java.
     surfaceView = findViewById(R.id.surfaceview); //Connects the visual components to Java logic.
     geospatialPoseTextView = findViewById(R.id.geospatial_pose_view);
     statusTextView = findViewById(R.id.status_text_view);
     tapScreenTextView = findViewById(R.id.tap_screen_text_view);
     setAnchorButton = findViewById(R.id.set_anchor_button);
     clearAnchorsButton = findViewById(R.id.clear_anchors_button);
+
+    //Add 2 more component on the layout
+    View freezeSendButton = findViewById(R.id.freeze_send_button);
+    View freezeStatusText = findViewById(R.id.freeze_status_text);
+    freezeSendButton.setOnClickListener(v -> {
+      Earth earth = session.getEarth();
+      if (earth != null && earth.getTrackingState() == TrackingState.TRACKING) {
+
+        //Describes a specific location, elevation, and orientation relative to Earth
+        GeospatialPose pose = earth.getCameraGeospatialPose();
+
+        double latitude = pose.getLatitude();
+        double longitude = pose.getLongitude();
+        double altitude = pose.getAltitude();
+        //quaternions are used to represent the orientation of objects in 3D space,
+        //mathematical way to express rotations
+        //Extracts the orientation from a Geospatial pose.
+        float[] quaternion = pose.getEastUpSouthQuaternion();
+        //quaternion represents the rotation matrix transforming a vector from the target to the east-up-south (EUS) coordinate system (i.e. X+ points east, Y+ points up, and Z+ points south). Values are written in the order {x, y, z, w}.
+
+
+        sendFrozenPoseToBackend(latitude, longitude, altitude, quaternion);
+        freezeStatusText.setText("Sent: Lat " + latitude + ", Lng " + longitude);
+      } else {
+        freezeStatusText.setText("Earth not tracking.");
+      }
+    });
+
 
     setAnchorButton.setOnClickListener(
         new View.OnClickListener() {
@@ -320,6 +386,7 @@ public class GeospatialActivity extends AppCompatActivity
     surfaceView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
     fusedLocationClient = LocationServices.getFusedLocationProviderClient(/* context= */ this);
   }
+
 
   @Override
   protected void onDestroy() {
