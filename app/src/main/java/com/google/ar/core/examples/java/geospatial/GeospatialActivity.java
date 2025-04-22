@@ -100,9 +100,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Main activity for the Geospatial API example.
+ * Main activity that shows AR camera feed and tracks location in the real world.
  *
- * <p>This example shows how to use the Geospatial APIs. Once the device is localized, anchors can
- * be created at the device's geospatial location. Anchor locations are persisted across sessions
+ * <p>This example shows how to use the Geospatial APIs.
+ * Once the device is localized, anchors can
+ * be created at the device's geospatial location.
+ * Anchor locations are persisted across sessions
  * and will be recreated once localized.
  */
 public class GeospatialActivity extends AppCompatActivity
@@ -257,9 +260,9 @@ public class GeospatialActivity extends AppCompatActivity
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     sharedPreferences = getPreferences(Context.MODE_PRIVATE);
-
+    //    Loads the layout file.
     setContentView(R.layout.activity_main);
-    surfaceView = findViewById(R.id.surfaceview);
+    surfaceView = findViewById(R.id.surfaceview); //Connects the visual components to Java logic.
     geospatialPoseTextView = findViewById(R.id.geospatial_pose_view);
     statusTextView = findViewById(R.id.status_text_view);
     tapScreenTextView = findViewById(R.id.tap_screen_text_view);

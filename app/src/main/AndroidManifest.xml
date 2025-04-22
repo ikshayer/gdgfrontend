@@ -1,28 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--   Declares the file as an XML document using UTF-8 encoding.-->
+
 <!--
-   Copyright 2022 Google LLC
+       Copyright 2022 Google LLC
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+          http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
--->
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
+
+    -->
+<!--    Defines the root of the manifest.-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.google.ar.core.examples.java.geospatial">
 
-  <uses-permission android:name="android.permission.CAMERA"/>
+  <!--package="com.google.ar.core.examples.java.geospatial" is the unique application ID.-->
+<!--  These lines request access to system features:-->
+  <uses-permission android:name="android.permission.CAMERA"/> <!--Get access to camera-->
 
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
+<!--  For geospatial AR based on GPS or network location.-->
   <uses-permission android:name="android.permission.INTERNET"/>
+<!--  For fetching map or ARCore updates.-->
 
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
@@ -32,7 +40,14 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <!-- Google Play assumes that certain hardware related permissions indicate that the underlying
        hardware features are required by default.
-       (https://developer.android.com/topic/arc/manifest.html#implied-features). -->
+       (https://developer.android.com/topic/arc/manifest.html#implied-features).
+        Tells the Play Store that this app requires:
+            A camera,
+            ARCore support (camera.ar),
+            OpenGL ES 2.0+ for rendering 3D graphics.
+        -->
+
+
   <uses-feature android:name="android.hardware.camera" android:required="true" />
   <!-- Limits app visibility in the Google Play Store to ARCore supported devices
        (https://developers.google.com/ar/devices). -->
@@ -47,6 +62,8 @@
       android:usesCleartextTraffic="false"
       tools:ignore="GoogleAppIndexingWarning">
 
+    <!--    Declares GeospatialActivity as the main entry point of the app.-->
+    <!--    The intent filter makes this activity launchable from the app icon.-->
     <activity
         android:name="com.google.ar.core.examples.java.geospatial.GeospatialActivity"
         android:configChanges="orientation|screenSize"
@@ -58,8 +75,12 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+
     <!-- Indicates whether "Google Play Services for AR" (ARCore) is "required" or "optional". -->
     <meta-data android:name="com.google.ar.core" android:value="required" />
+<!--    These are API keys used for:-->
+<!--    ARCore (Geospatial API) — uses location + AR to place objects in real-world coordinates.-->
+<!--    Google Maps or Places API, needed for Geospatial Anchors.-->
     <meta-data
         android:name="com.google.android.ar.API_KEY"
         android:value="AIzaSyDiX-wabx2moaUHIBrSIXxqM3NMVMvDsyM" />

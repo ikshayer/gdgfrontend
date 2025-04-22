@@ -24,7 +24,7 @@
       android:id="@+id/surfaceview"
       android:layout_width="fill_parent"
       android:layout_height="fill_parent"
-      android:layout_gravity="top"/>
+      android:layout_gravity="top" />
 
   <TextView
       android:id="@+id/status_text_view"
@@ -84,5 +84,14 @@
       android:layout_alignParentLeft="true"
       android:layout_alignParentBottom="true"
       android:visibility="invisible"/>
+  <!--      Assigns a unique ID to this button so it can be accessed in Java (findViewById(R.id.freeze_send_button)).-->
+  <Button
+      android:id="@+id/freeze_send_button"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Freeze and Send"
+      android:layout_centerHorizontal="true"
+      android:layout_above="@+id/status_text_view"
+      android:layout_marginBottom="16dp"/>
 
 </RelativeLayout>
