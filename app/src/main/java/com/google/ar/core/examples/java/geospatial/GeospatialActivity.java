@@ -271,6 +271,7 @@ public class GeospatialActivity extends AppCompatActivity
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Accept", "application/json");
 
         JSONObject json = new JSONObject();
         json.put("latitude", lat);
@@ -278,9 +279,14 @@ public class GeospatialActivity extends AppCompatActivity
         json.put("altitude", alt);
         json.put("quaternion", quaternion);
 
-        OutputStream os = conn.getOutputStream();
-        os.write(json.toString().getBytes("UTF-8"));
-        os.close();
+        try (OutputStream os = conn.getOutputStream()) {
+          byte[] input = json.toString().getBytes("UTF-8");
+          os.write(input, 0, input.length);
+        }
+
+        //Read the response
+        int responseCode = conn.getResponseCode();
+
 
         Log.d("Freeze", "Pose sent successfully");
       } catch (Exception e) {
@@ -309,7 +315,7 @@ public class GeospatialActivity extends AppCompatActivity
 
     //Add 2 more component on the layout
     View freezeSendButton = findViewById(R.id.freeze_send_button);
-    View freezeStatusText = findViewById(R.id.freeze_status_text);
+    TextView freezeStatusText = findViewById(R.id.freeze_status_text);
     freezeSendButton.setOnClickListener(v -> {
       Earth earth = session.getEarth();
       if (earth != null && earth.getTrackingState() == TrackingState.TRACKING) {
