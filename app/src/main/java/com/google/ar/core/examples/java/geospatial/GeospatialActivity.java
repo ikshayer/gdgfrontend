@@ -87,10 +87,24 @@ import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import com.google.ar.core.exceptions.UnsupportedConfigurationException;
+//Adding component from sceneform
+import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.ViewRenderable;
+import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.ar.sceneform.ux.ArFragment;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -102,6 +116,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -116,6 +131,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class GeospatialActivity extends AppCompatActivity
     implements SampleRender.Renderer,
+        Scene.OnUpdateListener,
         VpsAvailabilityNoticeDialogFragment.NoticeDialogListener,
         PrivacyNoticeDialogFragment.NoticeDialogListener {
 
@@ -124,6 +140,8 @@ public class GeospatialActivity extends AppCompatActivity
   private static final String SHARED_PREFERENCES_SAVED_ANCHORS = "SHARED_PREFERENCES_SAVED_ANCHORS";
   private static final String ALLOW_GEOSPATIAL_ACCESS_KEY = "ALLOW_GEOSPATIAL_ACCESS";
   private static final String ANCHOR_MODE = "ANCHOR_MODE";
+  private ArFragment arFragment;
+  private TextView floatingText;
 
   private static final float Z_NEAR = 0.1f;
   private static final float Z_FAR = 1000f;
@@ -263,10 +281,11 @@ public class GeospatialActivity extends AppCompatActivity
   private final Map<StreetscapeGeometry, Mesh> streetscapeGeometryToMeshes = new HashMap<>();
 
 
-  private void sendFrozenPoseToBackend(double lat, double lng, double alt, float[] quaternion) {
+  private void sendFrozenPoseToBackend(double lat, double lng, double alt, float[] quaternion, TextView freezeStatusText) {
     new Thread(() -> {
+
       try {
-        URL url = new URL("https://f3d6-163-5-171-14.ngrok-free.app/get_description");
+        URL url = new URL("https://0000-129-174-182-102.ngrok-free.app/get_description");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
@@ -284,28 +303,113 @@ public class GeospatialActivity extends AppCompatActivity
           os.write(input, 0, input.length);
         }
 
-        //Read the response
-        int responseCode = conn.getResponseCode();
+        // Read the response
+        InputStream is = new BufferedInputStream(conn.getInputStream());
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder responseBuilder = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+          responseBuilder.append(line);
+        }
 
+        JSONObject responseJson = new JSONObject(responseBuilder.toString());
+        //Extract the summary value from the Json file
+        String summary = responseJson.optString("summary");
+        //Extract the details value from the Json file
+//        String details = responseJson.optString("details");
 
-        Log.d("Freeze", "Pose sent successfully");
+        // Update the TextView on the UI thread
+//        freezeStatusText.post(() -> {
+//          freezeStatusText.setText("Summary: " + summary);
+//        });
+        freezeStatusText.post(() -> {
+          freezeStatusText.setText("Summary: " + summary);
+          renderARSummaryBox(lat, lng, alt, quaternion, summary); // 👈 AR box appears here!
+        });
+
       } catch (Exception e) {
         Log.e("Freeze", "Failed to send pose", e);
+        freezeStatusText.post(() -> {
+          freezeStatusText.setText("Failed to send pose: " + e.getMessage());
+        });
       }
     }).start();
   }
 
+  private void renderARSummaryBox(double lat, double lng, double alt, float[] quaternion, String summary) {
+    Anchor anchor = session.getEarth().createAnchor(lat, lng, alt, quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
+    ViewRenderable.builder()
+            .setView(this, R.layout.ar_text_box)
+            .build()
+            .thenAccept(viewRenderable -> {
+              AnchorNode anchorNode = new AnchorNode(anchor);
+              anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+              TransformableNode textNode = new TransformableNode(arFragment.getTransformationSystem());
+              textNode.setParent(anchorNode);
+              textNode.setRenderable(viewRenderable);
+
+              TextView textView = viewRenderable.getView().findViewById(R.id.ar_text);
+              textView.setText("Summary: " + summary);
+//              TextView arTextView = (TextView) viewRenderable.getView().findViewById(R.id.ar_text);
+//              arTextView.setText("Updated AR Text");
+
+            });
+
+  }
+  private void placeText(Anchor anchor, String text) {
+    CompletableFuture<ViewRenderable> renderableFuture = ViewRenderable.builder()
+            .setView(this, floatingText)
+            .build();
+
+    renderableFuture.thenAccept(viewRenderable -> {
+      AnchorNode anchorNode = new AnchorNode(anchor);
+      Node node = new Node();
+      node.setParent(anchorNode);
+      node.setRenderable(viewRenderable);
+
+      TextView textView = (TextView) viewRenderable.getView();
+      textView.setText(text);
+
+      Vector3 position = node.getLocalPosition();
+      position.y = position.y + 0.2f;
+      node.setLocalPosition(position);
+
+      arFragment.getArSceneView().getScene().addChild(anchorNode);
+    });
+  }
+
+  @Override
+  public void onUpdate(FrameTime frameTime) {
+  }
 
   // onCreate(): which is the entry point when this activity is launched in your ARCore app.
+  //entry point for an Android activity
+  // called when your ARCore app launches
+  /**
+   * Load the UI
+   * Initialize your AR scene
+   * Set up buttons and event listeners
+   * **/
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-
+//    Calls the parent method (required).
+//    Initializes sharedPreferences to store small data locally (like saved settings).
     super.onCreate(savedInstanceState);
     sharedPreferences = getPreferences(Context.MODE_PRIVATE);
-    //Loads the layout file.
+
+    //Loads layout from res/layout/activity_main.xml
     setContentView(R.layout.activity_main);
+
+    //Finds the ArFragment which is responsible for managing the AR camera view and placing objects into the scene.
+    //ArFragment is what actually renders the AR world on screen using Sceneform.
+//    arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+
+
     //Loads the layout from res/layout/activity_main.xml and puts it on the screen.
-    //This connects buttons and text views from the XML to variables you can control in Java.
+
+    //Connect UI Components
+    //connect the UI components you defined in XML to your Java code
     surfaceView = findViewById(R.id.surfaceview); //Connects the visual components to Java logic.
     geospatialPoseTextView = findViewById(R.id.geospatial_pose_view);
     statusTextView = findViewById(R.id.status_text_view);
@@ -313,14 +417,18 @@ public class GeospatialActivity extends AppCompatActivity
     setAnchorButton = findViewById(R.id.set_anchor_button);
     clearAnchorsButton = findViewById(R.id.clear_anchors_button);
 
-    //Add 2 more component on the layout
+    //Finds the button and the text view that will show the status (like loading or success).
     View freezeSendButton = findViewById(R.id.freeze_send_button);
     TextView freezeStatusText = findViewById(R.id.freeze_status_text);
+
+    //When the user taps the “Freeze and Send” button, this code runs.
     freezeSendButton.setOnClickListener(v -> {
+      //Checks if AR tracking is active and your ARCore session has a good understanding of the user's position on Earth.
       Earth earth = session.getEarth();
       if (earth != null && earth.getTrackingState() == TrackingState.TRACKING) {
 
         //Describes a specific location, elevation, and orientation relative to Earth
+        //Get Geospatial Pose
         GeospatialPose pose = earth.getCameraGeospatialPose();
 
         double latitude = pose.getLatitude();
@@ -332,9 +440,10 @@ public class GeospatialActivity extends AppCompatActivity
         float[] quaternion = pose.getEastUpSouthQuaternion();
         //quaternion represents the rotation matrix transforming a vector from the target to the east-up-south (EUS) coordinate system (i.e. X+ points east, Y+ points up, and Z+ points south). Values are written in the order {x, y, z, w}.
 
+        // Send Data to Backend
+        sendFrozenPoseToBackend(latitude, longitude, altitude, quaternion, freezeStatusText);
+//        freezeStatusText.setText("Quartenion1" + quaternion[0] + "Quartenion2" + quaternion[1] + "Quartenion3" + quaternion[2] + "Quartenion4" + quaternion[3]);
 
-        sendFrozenPoseToBackend(latitude, longitude, altitude, quaternion);
-        freezeStatusText.setText("Sent: Lat " + latitude + ", Lng " + longitude);
       } else {
         freezeStatusText.setText("Earth not tracking.");
       }
@@ -391,7 +500,20 @@ public class GeospatialActivity extends AppCompatActivity
             });
     surfaceView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
     fusedLocationClient = LocationServices.getFusedLocationProviderClient(/* context= */ this);
+    arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arFragment);
+    floatingText = new TextView(this);
+    arFragment.setOnTapArPlaneListener(
+            (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
+              if (plane.getType() != Plane.Type.HORIZONTAL_UPWARD_FACING) {
+                return;
+              }
+              placeText(hitResult.createAnchor(), "Hello World");
+            }
+
+    );
   }
+
+
 
 
   @Override
