@@ -58,4 +58,12 @@
   <string name="vps_unavailable_message">Your current location does not have VPS coverage. Your session will be using your GPS signal only if VPS is not available.</string>
   <!-- VPS unavailable notice continue. [CHAR_LIMIT=NONE] -->
   <string name="continue_button">Continue</string>
+
+  <string name="warning_max_anchors">Maximum number of info points reached.</string>
+  <string name="info_cleared_all">Cleared all info points.</string>
+
+  <string name="error_camera_permission">Camera permission is needed to run this application.</string>
+  <string name="error_location_permission">Precise location permission is needed for Geospatial features.</string>
+  <string name="status_initial">Initializing AR session…</string>
+  <string name="info_point_placed">Info point placed!</string>
 </resources>
