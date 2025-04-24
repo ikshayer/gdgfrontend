@@ -283,55 +283,95 @@ public class GeospatialActivity extends AppCompatActivity
 
   private void sendFrozenPoseToBackend(double lat, double lng, double alt, float[] quaternion, TextView freezeStatusText) {
     new Thread(() -> {
-
+      HttpURLConnection conn = null;
       try {
-        URL url = new URL("https://0000-129-174-182-102.ngrok-free.app/get_description");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        URL url = new URL("https://bb5c-2600-4040-2037-d00-4c37-86eb-afff-9c90.ngrok-free.app/get_description"); // ngrok URL (type: ngrok http 5000 in powershell)
+        conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
-        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Content-Type", "application/json; utf-8"); // Specify charset
         conn.setRequestProperty("Accept", "application/json");
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(20000);
 
         JSONObject json = new JSONObject();
         json.put("latitude", lat);
         json.put("longitude", lng);
         json.put("altitude", alt);
-        json.put("quaternion", quaternion);
+
+        // --- FIX: Convert float[] to JSONArray ---
+        JSONArray quatJsonArray = new JSONArray();
+        for (float val : quaternion) {
+          // Use put(double) as JSON standard doesn't differentiate float/double
+          quatJsonArray.put((double) val);
+        }
+        json.put("quaternion", quatJsonArray); // Put the JSONArray
+
+        String jsonInputString = json.toString();
+        Log.d("FreezeSend", "Sending JSON: " + jsonInputString); // Log the JSON being sent
 
         try (OutputStream os = conn.getOutputStream()) {
-          byte[] input = json.toString().getBytes("UTF-8");
+          byte[] input = jsonInputString.getBytes("UTF-8");
           os.write(input, 0, input.length);
         }
 
         // Read the response
-        InputStream is = new BufferedInputStream(conn.getInputStream());
+        int responseCode = conn.getResponseCode();
+        Log.d("FreezeSend", "Response Code: " + responseCode);
+
+        InputStream is = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
+        if (is == null) {
+          throw new IOException("No input or error stream from connection");
+        }
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder responseBuilder = new StringBuilder();
         String line;
         while ((line = reader.readLine()) != null) {
           responseBuilder.append(line);
         }
+        reader.close(); // Close reader
 
-        JSONObject responseJson = new JSONObject(responseBuilder.toString());
-        //Extract the summary value from the Json file
-        String summary = responseJson.optString("summary");
-        //Extract the details value from the Json file
-//        String details = responseJson.optString("details");
+        String responseBody = responseBuilder.toString();
+        Log.d("FreezeSend", "Response Body: " + responseBody);
 
-        // Update the TextView on the UI thread
-//        freezeStatusText.post(() -> {
-//          freezeStatusText.setText("Summary: " + summary);
-//        });
-        freezeStatusText.post(() -> {
-          freezeStatusText.setText("Summary: " + summary);
-          renderARSummaryBox(lat, lng, alt, quaternion, summary); // 👈 AR box appears here!
-        });
+        if (responseCode == HttpURLConnection.HTTP_OK) { // Check for 200 OK specifically for success parsing
+          JSONObject responseJson = new JSONObject(responseBody);
+
+          // Handle both success and fallback JSON from backend
+          String summary;
+          if (responseJson.has("raw_response")) {
+            Log.w("FreezeReceive", "Backend indicated AI parse failure.");
+            summary = responseJson.optString("warning", "Backend Note");
+          } else {
+            summary = responseJson.optString("summary", "Summary not found."); // Get summary if present
+          }
+
+
+          // Update the TextView and trigger AR Box on the UI thread
+          final String finalSummary = summary; // Need final variable for lambda
+          freezeStatusText.post(() -> {
+            freezeStatusText.setText("Summary: " + finalSummary); // Update status text too
+            if (!finalSummary.startsWith("Error") && !finalSummary.startsWith("Backend Note")) { // Only render box on success
+              renderARSummaryBox(lat, lng, alt, quaternion, finalSummary);
+            } else {
+              Toast.makeText(GeospatialActivity.this, finalSummary, Toast.LENGTH_LONG).show();
+            }
+          });
+        } else {
+          // Handle non-200 OK server responses
+          throw new IOException("Server returned error: " + responseCode + "\nBody: " + responseBody);
+        }
 
       } catch (Exception e) {
-        Log.e("Freeze", "Failed to send pose", e);
+        Log.e("FreezeError", "Failed request or processing response", e);
         freezeStatusText.post(() -> {
-          freezeStatusText.setText("Failed to send pose: " + e.getMessage());
+          freezeStatusText.setText("Error: " + e.getMessage());
         });
+      } finally {
+        if (conn != null) {
+          conn.disconnect(); // Ensure disconnect happens
+        }
       }
     }).start();
   }
